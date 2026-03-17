@@ -1,7 +1,6 @@
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
-// Abstract Class (Same as Use Case 2)
+// Abstract Room Class
 abstract class Room {
     private String type;
     private int beds;
@@ -19,6 +18,10 @@ abstract class Room {
         return type;
     }
 
+    public double getPrice() {
+        return price;
+    }
+
     public void displayDetails() {
         System.out.println("Room Type: " + type);
         System.out.println("Beds: " + beds);
@@ -27,7 +30,7 @@ abstract class Room {
     }
 }
 
-// Concrete Classes
+// Concrete Room Classes
 class SingleRoom extends Room {
     public SingleRoom() {
         super("Single Room", 1, 150.0, 2000.0);
@@ -46,39 +49,39 @@ class SuiteRoom extends Room {
     }
 }
 
-// ✅ Centralized Inventory Class
+// Centralized Inventory (Same as Use Case 3)
 class RoomInventory {
-    private Map<String, Integer> inventory;
+    private Map<String, Integer> inventory = new HashMap<>();
 
-    // Constructor initializes inventory
-    public RoomInventory() {
-        inventory = new HashMap<>();
-    }
-
-    // Register room type with availability
     public void addRoom(String roomType, int count) {
         inventory.put(roomType, count);
     }
 
-    // Get availability
     public int getAvailability(String roomType) {
         return inventory.getOrDefault(roomType, 0);
     }
 
-    // Update availability (controlled)
-    public void updateAvailability(String roomType, int newCount) {
-        if (inventory.containsKey(roomType)) {
-            inventory.put(roomType, newCount);
-        } else {
-            System.out.println("Room type not found!");
-        }
+    // Read-only view (important for safety)
+    public Map<String, Integer> getAllAvailability() {
+        return Collections.unmodifiableMap(inventory);
     }
+}
 
-    // Display entire inventory
-    public void displayInventory() {
-        System.out.println("\n===== ROOM INVENTORY =====");
-        for (Map.Entry<String, Integer> entry : inventory.entrySet()) {
-            System.out.println(entry.getKey() + " → Available: " + entry.getValue());
+// ✅ Search Service (Read-Only Logic)
+class SearchService {
+
+    public void searchAvailableRooms(List<Room> rooms, RoomInventory inventory) {
+        System.out.println("\n===== AVAILABLE ROOMS =====\n");
+
+        for (Room room : rooms) {
+            int available = inventory.getAvailability(room.getType());
+
+            // Defensive check: show only available rooms
+            if (available > 0) {
+                room.displayDetails();
+                System.out.println("Available: " + available);
+                System.out.println("-----------------------------");
+            }
         }
     }
 }
@@ -87,40 +90,25 @@ class RoomInventory {
  class HotelBookingApp {
     public static void main(String[] args) {
 
-        // Room objects (Domain Model)
+        // Domain Objects
         Room single = new SingleRoom();
         Room doubleRoom = new DoubleRoom();
         Room suite = new SuiteRoom();
 
-        // Initialize Inventory (Single Source of Truth)
-        RoomInventory inventory = new RoomInventory();
+        List<Room> rooms = Arrays.asList(single, doubleRoom, suite);
 
+        // Inventory Initialization
+        RoomInventory inventory = new RoomInventory();
         inventory.addRoom(single.getType(), 10);
-        inventory.addRoom(doubleRoom.getType(), 5);
+        inventory.addRoom(doubleRoom.getType(), 0); // Not available
         inventory.addRoom(suite.getType(), 2);
 
-        // Display Room Details + Availability
-        System.out.println("===== HOTEL ROOM DETAILS =====\n");
+        // Search Service
+        SearchService searchService = new SearchService();
 
-        single.displayDetails();
-        System.out.println("Available: " + inventory.getAvailability(single.getType()));
-        System.out.println("-----------------------------");
+        // Guest performs search (Read-only)
+        searchService.searchAvailableRooms(rooms, inventory);
 
-        doubleRoom.displayDetails();
-        System.out.println("Available: " + inventory.getAvailability(doubleRoom.getType()));
-        System.out.println("-----------------------------");
-
-        suite.displayDetails();
-        System.out.println("Available: " + inventory.getAvailability(suite.getType()));
-        System.out.println("-----------------------------");
-
-        // Update Example
-        System.out.println("\nUpdating Single Room Availability...\n");
-        inventory.updateAvailability("Single Room", 8);
-
-        // Display Updated Inventory
-        inventory.displayInventory();
-
-        System.out.println("\nApplication Terminated.");
+        System.out.println("\nSystem state remains unchanged.");
     }
 }
